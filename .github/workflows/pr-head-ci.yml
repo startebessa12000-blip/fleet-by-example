@@ -1,0 +1,26 @@
+name: PR Head Verification
+on:
+  pull_request:
+    branches:
+      - ci-runner-base
+jobs:
+  verify-exact-head:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head commit SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Assert checked-out HEAD matches PR head SHA
+        run: |
+          HEAD_SHA="$(git rev-parse HEAD)"
+          echo "Verified HEAD SHA: $HEAD_SHA"
+          echo "PR Head SHA:       ${{ github.event.pull_request.head.sha }}"
+          test "$HEAD_SHA" = "${{ github.event.pull_request.head.sha }}"
+          git status --short
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run test
+      - run: npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck tests/*.spec.ts
