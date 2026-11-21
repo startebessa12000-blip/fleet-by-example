@@ -12,6 +12,5 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: cat node_modules/@fleet-sdk/mock-chain/dist/index.mjs | head -n 120 || true
       - run: npm run test
-      - run: npx tsc --noEmit
+      - run: npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck tests/*.spec.ts
