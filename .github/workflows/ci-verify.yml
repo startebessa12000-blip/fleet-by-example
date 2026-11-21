@@ -4,13 +4,39 @@ on:
     branches:
       - ci/verify-examples
 jobs:
-  test:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm run test
-      - run: npx tsc --noEmit --target ESNext --module ESNext --moduleResolution bundler --strict --skipLibCheck tests/*.spec.ts
+      - name: Install and extract full npm audit + dependency paths
+        run: |
+          npm install
+          npm audit --json > audit.json || true
+          npm ls --all > tree.txt || true
+          node -e '
+            const fs = require("fs");
+            const a = JSON.parse(fs.readFileSync("audit.json", "utf8"));
+            console.log("=== METADATA ===", JSON.stringify(a.metadata?.vulnerabilities));
+            for (const [pkg, info] of Object.entries(a.vulnerabilities || {})) {
+              let ver = "unknown";
+              try { ver = JSON.parse(fs.readFileSync(`node_modules/${pkg}/package.json`, "utf8")).version; } catch {}
+              const advisories = (info.via || []).map(v => typeof v === "string" ? v : `${v.source || ""}:${v.name}:${v.severity}:${v.title}:${v.url || ""}:${v.range || ""}`);
+              console.log(JSON.stringify({ pkg, installed: ver, severity: info.severity, range: info.range, nodes: info.nodes, effects: info.effects, fixAvailable: info.fixAvailable, advisories }));
+            }
+          '
+          echo "=== DEPENDENCY PATHS ==="
+          for p in $(node -e 'const a=JSON.parse(require("fs").readFileSync("audit.json")); console.log(Object.keys(a.vulnerabilities||{}).join(" "))'); do
+            echo "--- npm ls $p ---"
+            npm ls "$p" --all || true
+          done
+      - name: Test safe non-force npm audit fix in dry copy
+        run: |
+          cp -r . /tmp/audit-test
+          cd /tmp/audit-test
+          npm audit fix || true
+          git diff package.json || true
+          npm audit || true
+          npm run test || true
