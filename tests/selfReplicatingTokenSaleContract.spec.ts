@@ -1,6 +1,5 @@
 import { MockChain } from "@fleet-sdk/mock-chain";
 import { compile } from "@fleet-sdk/compiler";
-import { hex } from "@fleet-sdk/common";
 import {
   OutputBuilder,
   SByte,
@@ -15,6 +14,12 @@ import { afterEach, describe, expect, it } from "vitest";
 const SALE_TOKEN_ID = "1111111111111111111111111111111111111111111111111111111111111111";
 const MIN_BOX_VALUE = 1_000_000n;
 const PRICE_PER_TOKEN = 10_000_000n; // 0.01 ERG per token
+
+function hexToBytes(hexString: string): Uint8Array {
+  return Uint8Array.from({ length: hexString.length / 2 }, (_, index) =>
+    Number.parseInt(hexString.slice(index * 2, index * 2 + 2), 16)
+  );
+}
 
 const SELF_REPLICATING_TOKEN_SALE_SCRIPT = `{
   val saleCycleValid = if (OUTPUTS.size >= 1) {
@@ -85,7 +90,7 @@ describe("Self-replicating token sale contract", () => {
       .from([saleBox, ...buyer.utxos.toArray()])
       .to([
         new OutputBuilder(sellerPayout, seller.address).setAdditionalRegisters({
-          R4: SColl(SByte, hex.decode(saleBox.boxId)).toHex()
+          R4: SColl(SByte, hexToBytes(saleBox.boxId)).toHex()
         }),
         new OutputBuilder(MIN_BOX_VALUE, saleContract.address).addTokens({
           tokenId: SALE_TOKEN_ID,
@@ -126,7 +131,7 @@ describe("Self-replicating token sale contract", () => {
       .from([saleBox, ...buyer.utxos.toArray()])
       .to([
         new OutputBuilder(fullPayout, seller.address).setAdditionalRegisters({
-          R4: SColl(SByte, hex.decode(saleBox.boxId)).toHex()
+          R4: SColl(SByte, hexToBytes(saleBox.boxId)).toHex()
         }),
         new OutputBuilder(MIN_BOX_VALUE, buyer.address).addTokens({
           tokenId: SALE_TOKEN_ID,
@@ -158,7 +163,7 @@ describe("Self-replicating token sale contract", () => {
       .from([saleBox, ...attacker.utxos.toArray()])
       .to([
         new OutputBuilder(underpaidAmount, seller.address).setAdditionalRegisters({
-          R4: SColl(SByte, hex.decode(saleBox.boxId)).toHex()
+          R4: SColl(SByte, hexToBytes(saleBox.boxId)).toHex()
         }),
         new OutputBuilder(MIN_BOX_VALUE, saleContract.address).addTokens({
           tokenId: SALE_TOKEN_ID,
@@ -194,7 +199,7 @@ describe("Self-replicating token sale contract", () => {
       .from([firstSaleBox, secondSaleBox, ...attacker.utxos.toArray()])
       .to([
         new OutputBuilder(singleBoxPayout, seller.address).setAdditionalRegisters({
-          R4: SColl(SByte, hex.decode(firstSaleBox.boxId)).toHex()
+          R4: SColl(SByte, hexToBytes(firstSaleBox.boxId)).toHex()
         }),
         new OutputBuilder(MIN_BOX_VALUE, attacker.address).addTokens({
           tokenId: SALE_TOKEN_ID,
